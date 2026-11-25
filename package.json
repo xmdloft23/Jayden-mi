@@ -4,7 +4,7 @@
   "description": "🔥 JAYDEN XMD ULTRA – Advanced WhatsApp Bot (Pair-Only). 400+ commands. By Abby kiddy",
   "main": "index.js",
   "type": "commonjs",
-  "author": "Abby kiddy",
+  "author": "Jayden xmd",
   "license": "MIT",
   "scripts": {
     "start": "node --expose-gc index.js",
@@ -39,7 +39,6 @@
     "api-qasim": "^3.2.10",
     "awesome-phonenumber": "^5.9.0",
     "axios": "^1.7.9",
-    "better-sqlite3": "^12.5.0",
     "body-parser": "^1.20.2",
     "btch-downloader": "^2.2.9",
     "buffer": "^6.0.3",
@@ -80,7 +79,6 @@
     "sharp": "^0.32.6",
     "simple-git": "^3.30.0",
     "socket.io": "^4.8.1",
-    "sqlite3": "^5.1.7",
     "stickers-formatter": "^0.0.1",
     "syntax-error": "^1.4.0",
     "translate-google-api": "^1.0.4",
@@ -90,5 +88,8 @@
     "ytdl-core": "^4.11.5",
     "@supabase/supabase-js": "^2.45.0",
     "pg": "^8.13.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^12.5.0"
   }
 }
