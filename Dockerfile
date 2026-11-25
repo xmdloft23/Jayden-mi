@@ -32,10 +32,11 @@ COPY . .
 RUN mkdir -p session temp data plugins public
 
 # Expose port
+ENV NODE_ENV=production
 EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
+  CMD curl -fs http://localhost:${PORT:-3000}/health || exit 1
 
-CMD ["node", "index.js"]
+CMD ["node", "--expose-gc", "index.js"]

@@ -1,35 +1,39 @@
 services:
   - type: web
-    name: redxbot302
+    name: jayden-xmd
     runtime: node
-    buildCommand: "apt-get install -y ffmpeg 2>/dev/null; npm install --legacy-peer-deps --no-audit --no-fund"
-    startCommand: "node index.js"
+    plan: free
+    buildCommand: npm install --legacy-peer-deps --no-audit --no-fund
+    startCommand: node --expose-gc index.js
+    healthCheckPath: /health
     envVars:
+      # PORT is injected by Render (10000) — do NOT define it here.
+      - key: NODE_VERSION
+        value: 20.18.0
       - key: NODE_ENV
         value: production
       - key: BOT_NAME
-        value: "🔥 REDXBOT302 🔥"
+        value: "🔥 JAYDEN XMD 🔥"
       - key: OWNER_NUMBER
-        value: "923009842133"
+        value: "255614545735"
       - key: OWNER_NAME
-        value: "Abdul Rehman Rajpoot"
-      - key: CO_OWNER
-        value: "Muzamil Khan"
-      - key: CO_OWNER_NUM
-        value: "923183928892"
+        value: "Abby kiddy"
       - key: PREFIX
         value: "."
       - key: BOT_MODE
         value: "public"
-      - key: PORT
-        value: "3000"
       - key: AUTO_STATUS_SEEN
         value: "true"
       - key: AUTO_STATUS_REACT
         value: "true"
-      # MongoDB (optional): paste your Atlas connection string
-      # (mongodb+srv://user:pass@cluster.mongodb.net/...). Whitelist Render's
-      # IP under Atlas → Network Access, or allow 0.0.0.0/0 for testing.
-      # Leave empty to use memory + JSON file storage.
+      # Secrets: set these in the Render dashboard (sync: false = not stored in git)
       - key: MONGO_URL
-        value: ""
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

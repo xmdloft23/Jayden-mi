@@ -15,6 +15,23 @@ const fs       = require('fs');
 const crypto   = require('crypto');
 require('dotenv').config();
 
+// ══ PORT-FIRST BOOT (Render / Heroku / Railway / Koyeb / Docker) ═══════════
+// ✅ FIX: Render prints "No open ports detected" and Heroku throws R10 when
+// the web server is not listening within ~60s. This server used to start at
+// the very END of this file (after every plugin/db/baileys load), so any slow
+// or failing require meant the platform never saw an open port and killed the
+// deploy. Now the HTTP server binds to 0.0.0.0:$PORT IMMEDIATELY; the bot
+// (sessions, plugins, DB) loads afterwards. Platforms always inject $PORT —
+// never hard-code it (Render uses 10000 by default).
+const app    = express();
+const server = http.createServer(app);
+const PORT   = Number(process.env.PORT) || 3000;
+server.on('error', (e) => console.error('❌ HTTP server error:', e.code || '', e.message));
+if (!process.env.VERCEL) {
+  server.listen(PORT, '0.0.0.0', () => console.log(`🌐 Port ${PORT} bound on 0.0.0.0 (platform health check OK)`));
+}
+
+
 // ── LOG NOISE FILTER ─────────────────────────────────────────
 // ✅ FIX: libsignal (used by Baileys) spams the log with harmless
 // decryption churn on every multi-device/retry message: "Bad MAC",
@@ -65,6 +82,15 @@ require('dotenv').config();
 })();
 
 const mongoSessionStore = require('./lib/mongoSessionStore');
+// ✅ FIX: `supabaseStore` was used below (reloadExistingSessions, /api status,
+// session save/delete) but never imported → ReferenceError on boot. Load it
+// safely; if the module/keys are missing fall back to a disabled no-op store.
+let supabaseStore;
+try { supabaseStore = require('./lib/supabaseStore'); }
+catch (e) {
+  supabaseStore = { isEnabled: () => false, saveSession: async () => {}, loadSession: async () => null,
+    listSessions: async () => [], deleteSession: async () => {}, saveSetting: async () => {} };
+}
 
 const {
   initPresenceManager,
@@ -299,10 +325,7 @@ try { chatbotRespond = require('./plugins/chatbot').handleChatbotResponse || cha
 catch(e) { console.warn('⚠️ chatbot load error:', e.message); }
 
 // ── APP ─────────────────────────────────────────────────────
-const app    = express();
-const server = http.createServer(app);
 const io     = socketIo(server, { cors: { origin: '*' } });
-const PORT   = process.env.PORT || 3000;
 const START_TIME = Date.now();
 
 app.use(cors({ origin: '*', methods: ['GET','POST','DELETE','PUT','OPTIONS'], allowedHeaders: ['Content-Type','x-admin-token','x-deploy-key'] }));
@@ -360,6 +383,7 @@ const DEPLOY_ID = (() => {
 })();
 
 const detectPlatform = () => {
+  if (process.env.VERCEL)              return 'Vercel';
   if (process.env.DYNO)                return 'Heroku';
   if (process.env.RAILWAY_ENVIRONMENT) return 'Railway';
   if (process.env.RENDER)              return 'Render';
@@ -1649,6 +1673,7 @@ function startKeepAlive() {
   const rawUrl = process.env.APP_URL
     || process.env.RENDER_EXTERNAL_URL
     || (process.env.HEROKU_APP_DEFAULT_DOMAIN_NAME ? `https://${process.env.HEROKU_APP_DEFAULT_DOMAIN_NAME}` : null)
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
     || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null);
   if (!rawUrl) {
     console.warn('⚠️ Keep-alive disabled: no APP_URL/RENDER_EXTERNAL_URL detected. Set APP_URL manually if pings aren\'t firing.');
@@ -1675,7 +1700,7 @@ function startKeepAlive() {
 }
 
 // ── START ─────────────────────────────────────────────────────
-server.listen(PORT, async () => {
+(async () => {
   console.log(`\n╔════════════════════════════════════════════════════╗`);
   console.log(`║  🔥 JAYDEN XMD v9.0.0 — ANTI-BAN EDITION             ║`);
   console.log(`║  🌐 http://localhost:${String(PORT).padEnd(26)}║`);
@@ -1683,10 +1708,13 @@ server.listen(PORT, async () => {
   console.log(`║  🛡️  Browser:  Ubuntu Chrome (anti-ban)              ║`);
   console.log(`║  🔌 Commands:  ${String(cmdCount+'+ loaded').padEnd(34)}║`);
   console.log(`╚════════════════════════════════════════════════════╝\n`);
+  // Vercel is serverless: a WhatsApp socket can't stay alive there, and every cold
+  // start would open a duplicate connection on the same session (→ logout/ban risk).
+  if (process.env.VERCEL) { console.log('▲ Vercel detected — web panel only, WhatsApp sessions NOT started'); return; }
   await reloadExistingSessions();
   startKeepAlive();
   if (autoUpdate) autoUpdate.startAutoUpdater(__dirname);
-});
+})().catch(e => console.error('Startup error:', e && e.message));
 
 async function reloadExistingSessions() {
   console.log('🔄 Checking existing sessions...');
